@@ -13,12 +13,12 @@ app = FastAPI()
 # Разрешаем запросы с фронтенда
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://air-quality-site.onrender.com"],
+    allow_origins=["https://air-quality-site.onrender.com", "http://localhost:3000"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-API_KEY = os.getenv("OPENWEATHER_API_KEY")
+API_KEY = "4d30ca20a1f492ae14d0d4cd306c1139"
 
 # Инициализация базы данных
 def init_db():
@@ -60,7 +60,6 @@ def save_to_db(station_name, lat, lon, data):
         print(f"Ошибка сохранения в БД: {e}")
         return False
 
-# Вызываем создание таблицы
 init_db()
 
 @app.get("/")
@@ -69,20 +68,6 @@ def root():
 
 @app.get("/air-quality/{lat}/{lon}")
 def get_air_quality(lat: float, lon: float, station_name: str = "Unknown"):
-    if not API_KEY:
-        return {
-            "list": [{
-                "main": {"aqi": 2},
-                "components": {
-                    "pm2_5": 12.5,
-                    "pm10": 23.0,
-                    "no2": 15.3,
-                    "so2": 5.2,
-                    "co": 169.95
-                }
-            }]
-        }
-    
     url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={API_KEY}"
     try:
         response = requests.get(url)
@@ -91,7 +76,6 @@ def get_air_quality(lat: float, lon: float, station_name: str = "Unknown"):
         save_to_db(station_name, lat, lon, data)
         return data
     except requests.exceptions.RequestException as e:
-        print(f"Ошибка API: {e}")
         return {
             "list": [{
                 "main": {"aqi": 2},
@@ -107,16 +91,13 @@ def get_air_quality(lat: float, lon: float, station_name: str = "Unknown"):
 
 @app.get("/weather/{lat}/{lon}")
 def get_weather(lat: float, lon: float):
-    if not API_KEY:
-        return {"error": "API key not set"}
-    
     url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric&lang=ru"
     try:
         response = requests.get(url)
         response.raise_for_status()
         return response.json()
-    except requests.exceptions.RequestException as e:
-        return {"error": str(e)}
+    except:
+        return {"error": "weather not available"}
 
 @app.get("/stations")
 def get_stations():
@@ -142,7 +123,6 @@ def get_history(station_name: str, limit: int = 10):
                  LIMIT ?''', (station_name, limit))
     rows = c.fetchall()
     conn.close()
-    
     history = []
     for row in rows:
         history.append({
