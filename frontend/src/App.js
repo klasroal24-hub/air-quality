@@ -8,47 +8,76 @@ function App() {
   const [selectedStation, setSelectedStation] = useState(null);
   const [airQuality, setAirQuality] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(null);
 
+  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+  // Загружаем станции
   useEffect(() => {
-    axios.get('http://localhost:8000/stations')
+    axios.get(`${apiUrl}/stations`)
       .then(response => setStations(response.data.stations))
       .catch(error => console.error('Ошибка загрузки станций:', error));
-  }, []);
+  }, [apiUrl]);
 
+  // Функция загрузки данных
   const fetchAirQuality = async (station) => {
     setLoading(true);
     setSelectedStation(station);
     try {
       const response = await axios.get(
-        `http://localhost:8000/air-quality/${station.lat}/${station.lon}?station_name=${station.name}`
+        `${apiUrl}/air-quality/${station.lat}/${station.lon}?station_name=${station.name}`
       );
       setAirQuality(response.data);
+      setLastUpdate(new Date().toLocaleTimeString());
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
     }
     setLoading(false);
   };
 
+  // Автообновление каждые 30 секунд, если выбрана станция
+  useEffect(() => {
+    if (!selectedStation) return;
+    const interval = setInterval(() => {
+      fetchAirQuality(selectedStation);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [selectedStation]);
+
   const getAQIColor = (aqi) => {
     switch(aqi) {
-      case 1: return '#00ff00';
-      case 2: return '#ffff00';
-      case 3: return '#ff9900';
-      case 4: return '#ff0000';
-      case 5: return '#990000';
-      default: return '#808080';
+      case 1: return '#00ff88';
+      case 2: return '#ffff44';
+      case 3: return '#ffaa44';
+      case 4: return '#ff6644';
+      case 5: return '#ff4444';
+      default: return '#ffffff';
+    }
+  };
+
+  const getAQIText = (aqi) => {
+    switch(aqi) {
+      case 1: return 'Хорошо';
+      case 2: return 'Умеренно';
+      case 3: return 'Чувствительным вредно';
+      case 4: return 'Вредно';
+      case 5: return 'Опасно';
+      default: return 'Нет данных';
     }
   };
 
   return (
     <div className="App">
       <header className="App-header">
-        <h1>🌍 Мониторинг качества воздуха — Красноярск</h1>
+        <h1>🌍 Мониторинг качества воздуха</h1>
+        <h2 style={{ fontSize: '1.2rem', marginTop: '0.5rem' }}>Красноярск — районы города</h2>
+        {lastUpdate && <div className="last-update">🔄 Обновлено: {lastUpdate}</div>}
+        <div className="auto-refresh">⏱ Автообновление каждые 30 секунд</div>
       </header>
       
       <div className="main-container">
         <div className="sidebar">
-          <h2>Станции мониторинга</h2>
+          <h2>📍 Районы Красноярска</h2>
           <ul className="stations-list">
             {stations.map(station => (
               <li 
@@ -61,23 +90,46 @@ function App() {
             ))}
           </ul>
 
-          {loading && <p>Загрузка данных...</p>}
+          {loading && <div className="loading">Загрузка данных...</div>}
 
           {airQuality && (
             <div className="air-quality-info">
-              <h3>Качество воздуха: {selectedStation?.name}</h3>
-              <p>Индекс: 
+              <h3>
+                {selectedStation?.name}
                 <span 
-                  className="aqi-value"
-                  style={{color: getAQIColor(airQuality.list[0].main.aqi)}}
+                  className="aqi-badge"
+                  style={{background: getAQIColor(airQuality.list[0].main.aqi)}}
                 >
-                  {airQuality.list[0].main.aqi}/5
+                  {getAQIText(airQuality.list[0].main.aqi)}
                 </span>
-              </p>
-              <p>PM2.5: {airQuality.list[0].components.pm2_5} мкг/м³</p>
-              <p>PM10: {airQuality.list[0].components.pm10} мкг/м³</p>
-              <p>NO2: {airQuality.list[0].components.no2} мкг/м³</p>
-              <p>SO2: {airQuality.list[0].components.so2} мкг/м³</p>
+              </h3>
+              
+              <div className="quality-grid">
+                <div className="quality-card">
+                  <div className="label">Индекс AQI</div>
+                  <div className="value">{airQuality.list[0].main.aqi}/5</div>
+                </div>
+                <div className="quality-card">
+                  <div className="label">PM2.5</div>
+                  <div className="value">{airQuality.list[0].components.pm2_5} мкг/м³</div>
+                </div>
+                <div className="quality-card">
+                  <div className="label">PM10</div>
+                  <div className="value">{airQuality.list[0].components.pm10} мкг/м³</div>
+                </div>
+                <div className="quality-card">
+                  <div className="label">NO₂</div>
+                  <div className="value">{airQuality.list[0].components.no2} мкг/м³</div>
+                </div>
+                <div className="quality-card">
+                  <div className="label">SO₂</div>
+                  <div className="value">{airQuality.list[0].components.so2} мкг/м³</div>
+                </div>
+                <div className="quality-card">
+                  <div className="label">CO</div>
+                  <div className="value">{airQuality.list[0].components.co} мкг/м³</div>
+                </div>
+              </div>
             </div>
           )}
         </div>
