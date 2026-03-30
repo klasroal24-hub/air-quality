@@ -7,8 +7,11 @@ function App() {
   const [stations, setStations] = useState([]);
   const [selectedStation, setSelectedStation] = useState(null);
   const [airQuality, setAirQuality] = useState(null);
+  const [weather, setWeather] = useState(null);
+  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [notification, setNotification] = useState(null);
 
   const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -19,7 +22,7 @@ function App() {
       .catch(error => console.error('Ошибка загрузки станций:', error));
   }, [apiUrl]);
 
-  // Функция загрузки данных
+  // Функция загрузки данных о качестве воздуха
   const fetchAirQuality = async (station) => {
     setLoading(true);
     setSelectedStation(station);
@@ -27,15 +30,43 @@ function App() {
       const response = await axios.get(
         `${apiUrl}/air-quality/${station.lat}/${station.lon}?station_name=${station.name}`
       );
-      setAirQuality(response.data);
+      const newData = response.data;
+      const aqi = newData.list[0].main.aqi;
+      const oldAqi = airQuality?.list[0].main.aqi;
+      
+      // Проверка на ухудшение
+      if (oldAqi && aqi > oldAqi) {
+        setNotification({
+          message: `⚠️ ВНИМАНИЕ! В районе ${station.name} качество воздуха ухудшилось!`,
+          level: aqi
+        });
+        setTimeout(() => setNotification(null), 5000);
+      }
+      
+      setAirQuality(newData);
       setLastUpdate(new Date().toLocaleTimeString());
+      
+      // Сохраняем в историю
+      setHistory(prev => [...prev, {
+        time: new Date().toLocaleTimeString(),
+        aqi: aqi,
+        pm25: newData.list[0].components.pm2_5
+      }].slice(-10));
+      
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
     }
     setLoading(false);
   };
 
-  // Автообновление каждые 30 секунд, если выбрана станция
+  // Загрузка погоды для Красноярска
+  useEffect(() => {
+    axios.get(`${apiUrl}/weather/56.01839/92.86717`)
+      .then(response => setWeather(response.data))
+      .catch(error => console.error('Ошибка загрузки погоды:', error));
+  }, [apiUrl]);
+
+  // Автообновление каждые 30 секунд
   useEffect(() => {
     if (!selectedStation) return;
     const interval = setInterval(() => {
@@ -66,14 +97,48 @@ function App() {
     }
   };
 
+  const getRiskLevel = (aqi) => {
+    switch(aqi) {
+      case 1: return { text: 'Безопасно', color: '#00ff88' };
+      case 2: return { text: 'Низкий риск', color: '#ffff44' };
+      case 3: return { text: 'Средний риск', color: '#ffaa44' };
+      case 4: return { text: 'Высокий риск', color: '#ff6644' };
+      case 5: return { text: 'Опасность!', color: '#ff4444' };
+      default: return { text: 'Нет данных', color: '#ffffff' };
+    }
+  };
+
   return (
     <div className="App">
       <header className="App-header">
         <h1>🌍 Мониторинг качества воздуха</h1>
         <h2 style={{ fontSize: '1.2rem', marginTop: '0.5rem' }}>Красноярск — районы города</h2>
+        
+        {weather && (
+          <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#88c0ff' }}>
+            🌡 {Math.round(weather.main.temp)}°C | 💨 {weather.wind.speed} м/с | 💧 {weather.main.humidity}%
+          </div>
+        )}
+        
         {lastUpdate && <div className="last-update">🔄 Обновлено: {lastUpdate}</div>}
         <div className="auto-refresh">⏱ Автообновление каждые 30 секунд</div>
       </header>
+      
+      {notification && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          background: '#ff4444',
+          color: 'white',
+          padding: '15px',
+          borderRadius: '10px',
+          zIndex: 1000,
+          animation: 'slideIn 0.5s ease'
+        }}>
+          {notification.message}
+        </div>
+      )}
       
       <div className="main-container">
         <div className="sidebar">
@@ -104,6 +169,13 @@ function App() {
                 </span>
               </h3>
               
+              <div style={{ marginBottom: '10px' }}>
+                <strong>⚠️ Уровень угрозы:</strong>{' '}
+                <span style={{ color: getRiskLevel(airQuality.list[0].main.aqi).color }}>
+                  {getRiskLevel(airQuality.list[0].main.aqi).text}
+                </span>
+              </div>
+              
               <div className="quality-grid">
                 <div className="quality-card">
                   <div className="label">Индекс AQI</div>
@@ -130,6 +202,23 @@ function App() {
                   <div className="value">{airQuality.list[0].components.co} мкг/м³</div>
                 </div>
               </div>
+              
+              {/* История замеров */}
+              {history.length > 0 && (
+                <div style={{ marginTop: '15px' }}>
+                  <h4>📊 Последние замеры PM2.5</h4>
+                  <div style={{ fontSize: '0.8rem' }}>
+                    {history.map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                        <span>{item.time}</span>
+                        <span style={{ color: item.pm25 > 20 ? '#ff6644' : '#88c0ff' }}>
+                          {item.pm25} мкг/м³
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -141,6 +230,13 @@ function App() {
           />
         </div>
       </div>
+      
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
