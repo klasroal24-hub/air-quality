@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import Map from './components/Map';
 import axios from 'axios';
-import { QRCode } from 'qrcode.react';
 
 function App() {
   const [stations, setStations] = useState([]);
@@ -10,14 +9,12 @@ function App() {
   const [airQuality, setAirQuality] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Загружаем список станций (только Красноярск)
   useEffect(() => {
     axios.get('http://localhost:8000/stations')
       .then(response => setStations(response.data.stations))
       .catch(error => console.error('Ошибка загрузки станций:', error));
   }, []);
 
-  // Загружаем качество воздуха для выбранной станции
   const fetchAirQuality = async (station) => {
     setLoading(true);
     setSelectedStation(station);
@@ -32,7 +29,6 @@ function App() {
     setLoading(false);
   };
 
-  // Функция для определения цвета на основе AQI
   const getAQIColor = (aqi) => {
     switch(aqi) {
       case 1: return '#00ff00';
@@ -48,10 +44,6 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>🌍 Мониторинг качества воздуха — Красноярск</h1>
-        <div style={{ textAlign: 'center', marginTop: '10px' }}>
-          <QRCode value={window.location.href} size={100} />
-          <p>📱 Отсканируй QR, чтобы открыть на телефоне</p>
-        </div>
       </header>
       
       <div className="main-container">
