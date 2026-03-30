@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import Map from './components/Map';
 import axios from 'axios';
-import QRCode from 'qrcode.react';
+import { QRCode } from 'qrcode.react';
 
 function App() {
   const [stations, setStations] = useState([]);
