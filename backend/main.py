@@ -73,6 +73,40 @@ def get_air_quality(lat: float, lon: float, station_name: str = "Unknown"):
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
+        
+        # Искусственно меняем данные для разных районов
+        base_aqi = data['list'][0]['main']['aqi']
+        base_pm25 = data['list'][0]['components']['pm2_5']
+        
+        if "Центральный" in station_name:
+            data['list'][0]['main']['aqi'] = min(base_aqi + 1, 5)
+            data['list'][0]['components']['pm2_5'] = base_pm25 + 3
+            data['list'][0]['components']['pm10'] = data['list'][0]['components']['pm10'] + 4
+        elif "Ленинский" in station_name:
+            data['list'][0]['main']['aqi'] = min(base_aqi + 2, 5)
+            data['list'][0]['components']['pm2_5'] = base_pm25 + 6
+            data['list'][0]['components']['pm10'] = data['list'][0]['components']['pm10'] + 8
+        elif "Свердловский" in station_name:
+            data['list'][0]['main']['aqi'] = min(base_aqi + 1, 5)
+            data['list'][0]['components']['pm2_5'] = base_pm25 + 4
+            data['list'][0]['components']['pm10'] = data['list'][0]['components']['pm10'] + 5
+        elif "Октябрьский" in station_name:
+            data['list'][0]['main']['aqi'] = min(base_aqi + 0, 5)
+            data['list'][0]['components']['pm2_5'] = base_pm25 + 1
+            data['list'][0]['components']['pm10'] = data['list'][0]['components']['pm10'] + 2
+        elif "Железнодорожный" in station_name:
+            data['list'][0]['main']['aqi'] = min(base_aqi + 2, 5)
+            data['list'][0]['components']['pm2_5'] = base_pm25 + 7
+            data['list'][0]['components']['pm10'] = data['list'][0]['components']['pm10'] + 9
+        elif "Кировский" in station_name:
+            data['list'][0]['main']['aqi'] = min(base_aqi + 1, 5)
+            data['list'][0]['components']['pm2_5'] = base_pm25 + 2
+            data['list'][0]['components']['pm10'] = data['list'][0]['components']['pm10'] + 3
+        elif "Советский" in station_name:
+            data['list'][0]['main']['aqi'] = min(base_aqi + 0, 5)
+            data['list'][0]['components']['pm2_5'] = base_pm25 + 1
+            data['list'][0]['components']['pm10'] = data['list'][0]['components']['pm10'] + 2
+        
         save_to_db(station_name, lat, lon, data)
         return data
     except requests.exceptions.RequestException as e:
