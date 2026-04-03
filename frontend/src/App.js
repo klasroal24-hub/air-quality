@@ -15,14 +15,12 @@ function App() {
 
   const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-  // Загружаем станции
   useEffect(() => {
     axios.get(`${apiUrl}/stations`)
       .then(response => setStations(response.data.stations))
       .catch(error => console.error('Ошибка загрузки станций:', error));
   }, [apiUrl]);
 
-  // Функция загрузки данных о качестве воздуха
   const fetchAirQuality = async (station) => {
     setLoading(true);
     setSelectedStation(station);
@@ -34,7 +32,6 @@ function App() {
       const aqi = newData.list[0].main.aqi;
       const oldAqi = airQuality?.list[0].main.aqi;
       
-      // Проверка на ухудшение
       if (oldAqi && aqi > oldAqi) {
         setNotification({
           message: `⚠️ ВНИМАНИЕ! В районе ${station.name} качество воздуха ухудшилось!`,
@@ -44,11 +41,10 @@ function App() {
       }
       
       setAirQuality(newData);
-      setLastUpdate(new Date().toLocaleTimeString());
+      setLastUpdate(new Date().toLocaleTimeString('ru-RU', { timeZone: 'Asia/Krasnoyarsk' }));
       
-      // Сохраняем в историю
       setHistory(prev => [...prev, {
-        time: new Date().toLocaleTimeString(),
+        time: new Date().toLocaleTimeString('ru-RU', { timeZone: 'Asia/Krasnoyarsk' }),
         aqi: aqi,
         pm25: newData.list[0].components.pm2_5
       }].slice(-10));
@@ -59,14 +55,12 @@ function App() {
     setLoading(false);
   };
 
-  // Загрузка погоды для Красноярска
   useEffect(() => {
     axios.get(`${apiUrl}/weather/56.01839/92.86717`)
       .then(response => setWeather(response.data))
       .catch(error => console.error('Ошибка загрузки погоды:', error));
   }, [apiUrl]);
 
-  // Автообновление каждые 30 секунд
   useEffect(() => {
     if (!selectedStation) return;
     const interval = setInterval(() => {
@@ -120,7 +114,7 @@ function App() {
           </div>
         )}
         
-        {lastUpdate && <div className="last-update">🔄 Обновлено: {lastUpdate}</div>}
+        {lastUpdate && <div className="last-update">🔄 Обновлено (Красноярск): {lastUpdate}</div>}
         <div className="auto-refresh">⏱ Автообновление каждые 30 секунд</div>
       </header>
       
@@ -201,9 +195,16 @@ function App() {
                   <div className="label">CO</div>
                   <div className="value">{airQuality.list[0].components.co} мкг/м³</div>
                 </div>
+                <div className="quality-card">
+                  <div className="label">O₃</div>
+                  <div className="value">{airQuality.list[0].components.o3} мкг/м³</div>
+                </div>
+                <div className="quality-card">
+                  <div className="label">NH₃</div>
+                  <div className="value">{airQuality.list[0].components.nh3} мкг/м³</div>
+                </div>
               </div>
               
-              {/* История замеров */}
               {history.length > 0 && (
                 <div style={{ marginTop: '15px' }}>
                   <h4>📊 Последние замеры PM2.5</h4>
