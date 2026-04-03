@@ -11,11 +11,10 @@ L.Icon.Default.mergeOptions({
 
 const Map = ({ stations, onStationClick }) => {
   useEffect(() => {
-    // Карта сразу на Красноярск
     const map = L.map('map').setView([56.01839, 92.86717], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
+      attribution: ''
     }).addTo(map);
 
     stations.forEach(station => {
